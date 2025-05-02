@@ -60,6 +60,11 @@ flask db upgrade
 
 ## Running the Application
 
+Starting with Docker:
+```
+docker-compose up
+```
+
 You can run all components with the start_all.py script:
 ```
 python start_all.py

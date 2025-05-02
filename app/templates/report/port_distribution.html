@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Port Distribution - Port Scanner{% endblock %}
+
+{% block header %}Port Distribution Report{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('report.index') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Reports
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Most Common Open Ports: {{ environment_name }}</h6>
+                <div class="dropdown no-arrow">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group input-group-sm me-2" style="width: 200px;">
+                            <label class="input-group-text" for="env_id">Environment</label>
+                            <select class="form-select" id="env_id" name="env_id" onchange="this.form.submit()">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <label class="input-group-text" for="limit">Limit</label>
+                            <select class="form-select" id="limit" name="limit" onchange="this.form.submit()">
+                                <option value="10" {% if limit == 10 %}selected{% endif %}>Top 10</option>
+                                <option value="20" {% if limit == 20 %}selected{% endif %}>Top 20</option>
+                                <option value="50" {% if limit == 50 %}selected{% endif %}>Top 50</option>
+                                <option value="100" {% if limit == 100 %}selected{% endif %}>Top 100</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if port_numbers and port_counts %}
+                <div class="chart-container" style="position: relative; height:400px; width:100%">
+                    <canvas id="portDistributionChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No port data available for the selected environment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if port_numbers and port_counts %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Port Distribution Data</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Port Number</th>
+                                <th>Count</th>
+                                <th>Common Service</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(port_numbers|length) %}
+                            <tr>
+                                <td>{{ port_numbers[i] }}</td>
+                                <td>{{ port_counts[i] }}</td>
+                                <td>
+                                    {% if port_numbers[i]|int == 80 %}
+                                    HTTP
+                                    {% elif port_numbers[i]|int == 443 %}
+                                    HTTPS
+                                    {% elif port_numbers[i]|int == 22 %}
+                                    SSH
+                                    {% elif port_numbers[i]|int == 21 %}
+                                    FTP
+                                    {% elif port_numbers[i]|int == 3389 %}
+                                    RDP
+                                    {% elif port_numbers[i]|int == 25 %}
+                                    SMTP
+                                    {% elif port_numbers[i]|int == 53 %}
+                                    DNS
+                                    {% elif port_numbers[i]|int == 3306 %}
+                                    MySQL
+                                    {% elif port_numbers[i]|int == 1433 %}
+                                    MSSQL
+                                    {% elif port_numbers[i]|int == 445 %}
+                                    SMB
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('report.export_report') }}?type=port&port={{ port_numbers[i] }}&env_id={{ current_env_id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download me-1"></i>Export Hosts
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if port_numbers and port_counts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('portDistributionChart').getContext('2d');
+        const portDistributionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ port_numbers|tojson }},
+                datasets: [{
+                    label: 'Open Ports Count',
+                    data: {{ port_counts|tojson }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Port Number'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Most Common Open Ports'
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

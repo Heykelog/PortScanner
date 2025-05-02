@@ -1,0 +1,15 @@
+flask==2.3.3
+flask-sqlalchemy==3.1.1
+flask-migrate==4.0.5
+flask-wtf==1.2.1
+flask-login==0.6.3
+python-nmap==0.7.1
+python-dotenv==1.0.0
+celery==5.3.6
+redis==5.0.1
+psycopg2-binary==2.9.9
+wtforms==3.1.1
+email-validator==2.1.0.post1
+python-dateutil==2.8.2
+schedule==1.2.1
+gunicorn==21.2.0 

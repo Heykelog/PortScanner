@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Scans - Port Scanner{% endblock %}
+
+{% block header %}Scan History{% endblock %}
+
+{% block header_buttons %}
+{% if current_user.is_admin %}
+<a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">
+    <i class="fas fa-plus me-2"></i>New Scan
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Scans</h6>
+        
+        <!-- Filters -->
+        <div class="d-flex">
+            <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search" method="get">
+                <div class="input-group">
+                    <!-- Status Filter -->
+                    <select class="form-select" name="status" onChange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="running" {% if current_status == 'running' %}selected{% endif %}>Running</option>
+                        <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="failed" {% if current_status == 'failed' %}selected{% endif %}>Failed</option>
+                    </select>
+                    
+                    <!-- Environment Filter -->
+                    <select class="form-select" name="env_id" onChange="this.form.submit()">
+                        <option value="">All Environments</option>
+                        {% for env in environments %}
+                        <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <!-- Date From -->
+                    <input type="date" class="form-control" name="date_from" value="{{ date_from }}" placeholder="From Date">
+                    
+                    <!-- Date To -->
+                    <input type="date" class="form-control" name="date_to" value="{{ date_to }}" placeholder="To Date">
+                    
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-filter fa-sm"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if scans %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Environment</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Findings</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('scan.view_scan', scan_id=scan.id) }}">
+                                {{ scan.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.view_environment', env_id=scan.environment_id) }}">
+                                {{ scan.environment.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if scan.status == 'pending' %}
+                            <span class="badge bg-secondary">Pending</span>
+                            {% elif scan.status == 'running' %}
+                            <span class="badge bg-primary">Running</span>
+                            {% elif scan.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif scan.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else 'Not started' }}</td>
+                        <td>
+                            {% if scan.start_time and scan.end_time %}
+                            {{ (scan.end_time - scan.start_time).total_seconds() | round }} seconds
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if scan.status == 'completed' %}
+                            <span class="badge bg-info">{{ scan.discovered_hosts }} hosts</span>
+                            <span class="badge bg-warning">{{ scan.open_ports_found }} ports</span>
+                            {% if scan.new_ports_found > 0 %}
+                            <span class="badge bg-danger">{{ scan.new_ports_found }} new</span>
+                            {% endif %}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('scan.view_scan', scan_id=scan.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if current_user.is_admin %}
+                            <form class="d-inline" action="{{ url_for('scan.rescan', scan_id=scan.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-primary btn-sm" title="Run Again">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </form>
+                            {% if scan.status == 'completed' and scan.scan_type == 'port_scan' %}
+                            <form class="d-inline" action="{{ url_for('scan.run_vuln_scan', scan_id=scan.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-warning btn-sm" title="Run Vulnerability Scan">
+                                    <i class="fas fa-bug"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-danger btn-sm"
+                                    data-delete-url="{{ url_for('scan.delete_scan', scan_id=scan.id) }}" 
+                                    data-item-name="{{ scan.name }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mt-4">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('scan.index', page=pagination.prev_num, status=current_status, env_id=current_env_id, date_from=date_from, date_to=date_to) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page in pagination.iter_pages() %}
+                    {% if page %}
+                        {% if page != pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('scan.index', page=page, status=current_status, env_id=current_env_id, date_from=date_from, date_to=date_to) }}">{{ page }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <a class="page-link" href="#">{{ page }}</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#">...</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('scan.index', page=pagination.next_num, status=current_status, env_id=current_env_id, date_from=date_from, date_to=date_to) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No scans found matching your criteria.</p>
+            {% if current_status or current_env_id or date_from or date_to %}
+            <a href="{{ url_for('scan.index') }}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Clear Filters
+            </a>
+            {% else %}
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Start New Scan
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up delete modal functionality
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        const scanNamePlaceholder = document.getElementById('scanNamePlaceholder');
+        const deleteForm = document.getElementById('deleteForm');
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const scanId = this.getAttribute('data-scan-id');
+                const scanName = this.getAttribute('data-scan-name');
+                
+                // Update the form action with the correct scan ID
+                deleteForm.action = deleteForm.action.replace('/0', '/' + scanId);
+                
+                // Update the modal content with the scan name
+                scanNamePlaceholder.textContent = scanName;
+            });
+        });
+    });
+</script>
+{% endblock %} 

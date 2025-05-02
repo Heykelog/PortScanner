@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Port Scanner{% endblock %}
+
+{% block header %}Reports Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Port Distribution</h5>
+                <p class="card-text">View distribution of ports across your network.</p>
+                <a href="{{ url_for('report.port_distribution') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Host Status</h5>
+                <p class="card-text">Monitor the status of hosts in your environment.</p>
+                <a href="{{ url_for('report.host_status') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Vulnerabilities</h5>
+                <p class="card-text">See all detected vulnerabilities across your network.</p>
+                <a href="{{ url_for('report.vulnerabilities') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">New Findings</h5>
+                <p class="card-text">View recent changes detected in your network.</p>
+                <a href="{{ url_for('report.new_findings') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Service Summary</h5>
+                <p class="card-text">View summary of services running in your environment.</p>
+                <a href="{{ url_for('report.service_summary') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Scan Comparison</h5>
+                <p class="card-text">Compare results between different scan runs.</p>
+                <a href="{{ url_for('report.comparison') }}" class="btn btn-primary">View Report</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Export Data</h6>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('report.export_report') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="report_type" class="form-label">Report Type</label>
+                        <select class="form-select" id="report_type" name="report_type" required>
+                            <option value="hosts">Host List</option>
+                            <option value="ports">Open Ports</option>
+                            <option value="vulnerabilities">Vulnerabilities</option>
+                            <option value="changes">Recent Changes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="environment_id" class="form-label">Environment</label>
+                        <select class="form-select" id="environment_id" name="environment_id">
+                            <option value="">All Environments</option>
+                            {% for env in environments %}
+                            <option value="{{ env.id }}">{{ env.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="format" class="form-label">Format</label>
+                        <select class="form-select" id="format" name="format" required>
+                            <option value="csv">CSV</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-download me-2"></i>Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

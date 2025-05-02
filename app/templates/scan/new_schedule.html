@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}New Schedule - Port Scanner{% endblock %}
+
+{% block header %}Create New Schedule{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('scan.schedules') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Schedules
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Schedule Configuration</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Schedule Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="Enter a name for this schedule">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="frequency" class="form-label">Frequency</label>
+                            <select class="form-select" id="frequency" name="frequency" required>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="time_of_day" class="form-label">Time of Day</label>
+                            <input type="time" class="form-control" id="time_of_day" name="time_of_day" required
+                                   value="02:00">
+                            <div class="form-text">24-hour format (HH:MM)</div>
+                        </div>
+                        
+                        <div class="col-md-4" id="day_of_week_section" style="display: none;">
+                            <label for="day_of_week" class="form-label">Day of Week</label>
+                            <select class="form-select" id="day_of_week" name="day_of_week">
+                                <option value="0">Monday</option>
+                                <option value="1">Tuesday</option>
+                                <option value="2">Wednesday</option>
+                                <option value="3">Thursday</option>
+                                <option value="4">Friday</option>
+                                <option value="5">Saturday</option>
+                                <option value="6">Sunday</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4" id="day_of_month_section" style="display: none;">
+                            <label for="day_of_month" class="form-label">Day of Month</label>
+                            <select class="form-select" id="day_of_month" name="day_of_month">
+                                {% for day in range(1, 29) %}
+                                <option value="{{ day }}">{{ day }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="environment_id" class="form-label">Environment</label>
+                            <select class="form-select" id="environment_id" name="environment_id" required>
+                                <option value="">Select Environment</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}">{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="subnet_id" class="form-label">Subnet (Optional)</label>
+                            <select class="form-select" id="subnet_id" name="subnet_id">
+                                <option value="all">All Subnets</option>
+                                {% for subnet in subnets %}
+                                <option value="{{ subnet.id }}" data-env="{{ subnet.environment_id }}">{{ subnet.cidr }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Leave as "All Subnets" to scan the entire environment</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('scan.schedules') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Schedule
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const frequencySelect = document.getElementById('frequency');
+        const dayOfWeekSection = document.getElementById('day_of_week_section');
+        const dayOfMonthSection = document.getElementById('day_of_month_section');
+        const environmentSelect = document.getElementById('environment_id');
+        const subnetSelect = document.getElementById('subnet_id');
+        
+        // Show/hide day fields based on frequency
+        frequencySelect.addEventListener('change', function() {
+            const value = this.value;
+            
+            if (value === 'weekly') {
+                dayOfWeekSection.style.display = 'block';
+                dayOfMonthSection.style.display = 'none';
+            } else if (value === 'monthly') {
+                dayOfWeekSection.style.display = 'none';
+                dayOfMonthSection.style.display = 'block';
+            } else {
+                dayOfWeekSection.style.display = 'none';
+                dayOfMonthSection.style.display = 'none';
+            }
+        });
+        
+        // Filter subnets by selected environment
+        environmentSelect.addEventListener('change', function() {
+            const envId = this.value;
+            
+            // Get all subnet options except the first one (All Subnets)
+            const subnetOptions = Array.from(subnetSelect.options).slice(1);
+            
+            // First, clear all options except the first one
+            while (subnetSelect.options.length > 1) {
+                subnetSelect.remove(1);
+            }
+            
+            // Then add back only those matching the selected environment
+            subnetOptions.forEach(option => {
+                if (option.dataset.env === envId) {
+                    subnetSelect.add(option);
+                }
+            });
+        });
+        
+        // Trigger frequency change to set initial state
+        frequencySelect.dispatchEvent(new Event('change'));
+    });
+</script>
+{% endblock %}
+{% endblock %} 

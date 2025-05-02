@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Service Summary - Port Scanner{% endblock %}
+
+{% block header %}Service Summary Report{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('report.index') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Reports
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Service Distribution: {{ environment_name }}</h6>
+                <div class="dropdown no-arrow">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <label class="input-group-text" for="env_id">Environment</label>
+                            <select class="form-select" id="env_id" name="env_id" onchange="this.form.submit()">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top Services</h6>
+            </div>
+            <div class="card-body">
+                {% if service_data %}
+                <div class="chart-container" style="position: relative; height:400px; width:100%">
+                    <canvas id="serviceChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No service data available for the selected environment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Service Risk Assessment</h6>
+            </div>
+            <div class="card-body">
+                {% if risk_data %}
+                <div class="chart-container" style="position: relative; height:400px; width:100%">
+                    <canvas id="riskChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No risk assessment data available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Service Details</h6>
+            </div>
+            <div class="card-body">
+                {% if service_data %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Count</th>
+                                <th>Common Ports</th>
+                                <th>Risk Level</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in service_data %}
+                            <tr>
+                                <td>{{ service.name }}</td>
+                                <td>{{ service.count }}</td>
+                                <td>
+                                    {% for port in service.common_ports %}
+                                    <span class="badge bg-secondary">{{ port }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if service.risk_level == 'high' %}
+                                    <span class="badge bg-danger">High</span>
+                                    {% elif service.risk_level == 'medium' %}
+                                    <span class="badge bg-warning text-dark">Medium</span>
+                                    {% elif service.risk_level == 'low' %}
+                                    <span class="badge bg-success">Low</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('report.export_report') }}?type=service&service={{ service.name|urlencode }}&env_id={{ current_env_id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download me-1"></i>Export Hosts
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No service data available for the selected environment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if service_data %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Service Security Recommendations</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle me-2"></i>Recommendations based on discovered services</h5>
+                    <ul class="mb-0 mt-2">
+                        {% for service in service_data %}
+                            {% if service.risk_level == 'high' %}
+                            <li><strong>{{ service.name }}:</strong> Consider restricting access to this service or replacing with a more secure alternative. Ensure it's protected by a firewall and regularly patched.</li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if service_data|selectattr('risk_level', 'equalto', 'high')|list|length == 0 %}
+                            <li>No high-risk services detected. Continue monitoring and following security best practices.</li>
+                        {% endif %}
+                        
+                        {% for service in service_data %}
+                            {% if service.name == 'http' %}
+                            <li><strong>HTTP Service:</strong> Consider upgrading to HTTPS for all web services.</li>
+                            {% endif %}
+                            
+                            {% if service.name == 'telnet' %}
+                            <li><strong>Telnet Service:</strong> Replace with SSH for secure remote administration.</li>
+                            {% endif %}
+                            
+                            {% if service.name == 'ftp' %}
+                            <li><strong>FTP Service:</strong> Consider using SFTP or FTPS for secure file transfers.</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if service_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Service Chart
+        const ctx = document.getElementById('serviceChart').getContext('2d');
+        const serviceNames = {{ service_data|map(attribute='name')|list|tojson }};
+        const serviceCounts = {{ service_data|map(attribute='count')|list|tojson }};
+        
+        const backgroundColors = [];
+        const borderColors = [];
+        
+        // Assign colors based on risk level
+        {% for service in service_data %}
+            {% if service.risk_level == 'high' %}
+                backgroundColors.push('rgba(255, 99, 132, 0.7)');
+                borderColors.push('rgba(255, 99, 132, 1)');
+            {% elif service.risk_level == 'medium' %}
+                backgroundColors.push('rgba(255, 205, 86, 0.7)');
+                borderColors.push('rgba(255, 205, 86, 1)');
+            {% elif service.risk_level == 'low' %}
+                backgroundColors.push('rgba(75, 192, 192, 0.7)');
+                borderColors.push('rgba(75, 192, 192, 1)');
+            {% else %}
+                backgroundColors.push('rgba(201, 203, 207, 0.7)');
+                borderColors.push('rgba(201, 203, 207, 1)');
+            {% endif %}
+        {% endfor %}
+        
+        const serviceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: serviceNames,
+                datasets: [{
+                    label: 'Service Count',
+                    data: serviceCounts,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Service'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Service Distribution'
+                    }
+                }
+            }
+        });
+        
+        // Risk Chart
+        const riskCtx = document.getElementById('riskChart').getContext('2d');
+        
+        // Count services by risk level
+        const highRisk = {{ service_data|selectattr('risk_level', 'equalto', 'high')|list|length }};
+        const mediumRisk = {{ service_data|selectattr('risk_level', 'equalto', 'medium')|list|length }};
+        const lowRisk = {{ service_data|selectattr('risk_level', 'equalto', 'low')|list|length }};
+        const unknownRisk = {{ service_data|selectattr('risk_level', 'equalto', 'unknown')|list|length }};
+        
+        const riskChart = new Chart(riskCtx, {
+            type: 'pie',
+            data: {
+                labels: ['High Risk', 'Medium Risk', 'Low Risk', 'Unknown Risk'],
+                datasets: [{
+                    data: [highRisk, mediumRisk, lowRisk, unknownRisk],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(255, 205, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(201, 203, 207, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 205, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(201, 203, 207, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Services by Risk Level'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

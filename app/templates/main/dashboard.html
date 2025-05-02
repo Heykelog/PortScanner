@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Port Scanner{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Card: New Hosts -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            New Hosts (24h)
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ new_hosts }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-server fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: New Ports -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            New Ports (24h)
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ new_ports }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-ethernet fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Total Scans -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Scans
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_scans }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-search fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Scan Success Rate -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Scan Success Rate
+                        </div>
+                        <div class="row no-gutters align-items-center">
+                            <div class="col-auto">
+                                {% if total_scans > 0 %}
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ (completed_scans / total_scans * 100) | round }}%</div>
+                                {% else %}
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">N/A</div>
+                                {% endif %}
+                            </div>
+                            <div class="col">
+                                {% if total_scans > 0 %}
+                                <div class="progress progress-sm mr-2">
+                                    <div class="progress-bar bg-warning" role="progressbar"
+                                        style="width: {{ (completed_scans / total_scans * 100) | round }}%"></div>
+                                </div>
+                                {% else %}
+                                <div class="progress progress-sm mr-2">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Environment Summary and Recent Scans -->
+<div class="row">
+    <!-- Environment Summary -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Environment Summary</h6>
+                <a href="{{ url_for('main.environments') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if env_summary %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Environment</th>
+                                <th>Subnets</th>
+                                <th>Hosts</th>
+                                <th>Ports</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for env in env_summary %}
+                            <tr>
+                                <td>{{ env.name }}</td>
+                                <td>{{ env.subnet_count }}</td>
+                                <td>{{ env.host_count }}</td>
+                                <td>{{ env.port_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted">No environments configured yet.</p>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.new_environment') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Environment
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Scans -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Scans</h6>
+                <a href="{{ url_for('scan.index') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_scans %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Started</th>
+                                <th>Status</th>
+                                <th>Findings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for scan in recent_scans %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('scan.view_scan', scan_id=scan.id) }}">
+                                        {{ scan.name }}
+                                    </a>
+                                </td>
+                                <td>{{ scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else 'Pending' }}</td>
+                                <td>
+                                    {% if scan.status == 'pending' %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                    {% elif scan.status == 'running' %}
+                                    <span class="badge bg-primary">Running</span>
+                                    {% elif scan.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif scan.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if scan.status == 'completed' %}
+                                    {{ scan.new_ports_found }} new ports, {{ scan.vulnerabilities_found }} vulns
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted">No scans have been run yet.</p>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Run New Scan
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    command: gunicorn --bind 0.0.0.0:5000 run:app
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=run.py
+      - SECRET_KEY=docker-compose-secret-key-change-in-production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portscanner
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    restart: always
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=portscanner
+    ports:
+      - "5433:5432"
+    restart: always
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  celery-worker:
+    build: .
+    entrypoint: /app/celery-worker-entrypoint.sh
+    command: celery -A app.tasks.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - SECRET_KEY=docker-compose-secret-key-change-in-production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portscanner
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_CONCURRENCY=4
+    depends_on:
+      - db
+      - redis
+      - web
+    restart: always
+
+  celery-beat:
+    build: .
+    entrypoint: /app/celery-beat-entrypoint.sh
+    command: celery -A app.tasks.celery beat --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - SECRET_KEY=docker-compose-secret-key-change-in-production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portscanner
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - celery-worker
+    restart: always
+
+volumes:
+  postgres_data: 

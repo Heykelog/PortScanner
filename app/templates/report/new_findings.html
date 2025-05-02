@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}New Findings - Port Scanner{% endblock %}
+
+{% block header %}New Findings Report{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('report.index') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Reports
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">New Findings: {{ environment_name }} (Last {{ days }} Days)</h6>
+                <div class="dropdown no-arrow">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group input-group-sm me-2" style="width: 200px;">
+                            <label class="input-group-text" for="env_id">Environment</label>
+                            <select class="form-select" id="env_id" name="env_id" onchange="this.form.submit()">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <label class="input-group-text" for="days">Time Period</label>
+                            <select class="form-select" id="days" name="days" onchange="this.form.submit()">
+                                <option value="1" {% if days == 1 %}selected{% endif %}>Last 24h</option>
+                                <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                                <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Hosts -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">New Hosts Discovered</h6>
+            </div>
+            <div class="card-body">
+                {% if new_hosts %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0" id="newHostsTable">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>Subnet</th>
+                                <th>First Discovered</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for host in new_hosts %}
+                            <tr>
+                                <td>{{ host.ip_address }}</td>
+                                <td>{{ host.hostname or 'Unknown' }}</td>
+                                <td>{{ host.subnet.cidr }}</td>
+                                <td>{{ host.first_discovered.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if host.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.view_host', host_id=host.id) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No new hosts discovered in the selected time period.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Ports -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">New Open Ports Discovered</h6>
+            </div>
+            <div class="card-body">
+                {% if new_ports %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0" id="newPortsTable">
+                        <thead>
+                            <tr>
+                                <th>Host</th>
+                                <th>Port</th>
+                                <th>Protocol</th>
+                                <th>Service</th>
+                                <th>First Discovered</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for port in new_ports %}
+                            <tr>
+                                <td>{{ port.host_ip }}</td>
+                                <td>{{ port.port_number }}</td>
+                                <td>{{ port.protocol }}</td>
+                                <td>{{ port.service or 'Unknown' }}</td>
+                                <td>{{ port.first_discovered.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('main.view_host', host_id=port.port_id) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye me-1"></i>View Host
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No new open ports discovered in the selected time period.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Charts -->
+{% if new_hosts or new_ports %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Discovery Timeline</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                    <canvas id="discoveryTimelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">New Findings Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            New Hosts</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ new_hosts|length }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-server fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            New Open Ports</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ new_ports|length }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-door-open fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if new_hosts or new_ports %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Prepare data for discovery timeline chart
+        const startDate = new Date('{{ start_date }}');
+        const endDate = new Date('{{ end_date }}');
+        
+        // Create date labels for the chart (one per day)
+        const dateLabels = [];
+        const hostCounts = [];
+        const portCounts = [];
+        
+        // Initialize with zeros
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+            dateLabels.push(currentDate.toISOString().split('T')[0]);
+            hostCounts.push(0);
+            portCounts.push(0);
+            
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Count hosts discovered per day
+        {% for host in new_hosts %}
+        const hostDate = '{{ host.first_discovered.strftime("%Y-%m-%d") }}';
+        const hostIndex = dateLabels.indexOf(hostDate);
+        if (hostIndex !== -1) {
+            hostCounts[hostIndex]++;
+        }
+        {% endfor %}
+        
+        // Count ports discovered per day
+        {% for port in new_ports %}
+        const portDate = '{{ port.first_discovered.strftime("%Y-%m-%d") }}';
+        const portIndex = dateLabels.indexOf(portDate);
+        if (portIndex !== -1) {
+            portCounts[portIndex]++;
+        }
+        {% endfor %}
+        
+        // Create the chart
+        const ctx = document.getElementById('discoveryTimelineChart').getContext('2d');
+        const discoveryTimelineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dateLabels,
+                datasets: [
+                    {
+                        label: 'New Hosts',
+                        data: hostCounts,
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'New Ports',
+                        data: portCounts,
+                        borderColor: 'rgba(28, 200, 138, 1)',
+                        backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Discoveries Over Time'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

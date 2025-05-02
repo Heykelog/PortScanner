@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Comparison - Port Scanner{% endblock %}
+
+{% block header %}Scan Comparison Report{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('report.index') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Reports
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Scan Comparison: {{ environment_name }}</h6>
+                <div class="dropdown no-arrow">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group input-group-sm me-2" style="width: 200px;">
+                            <label class="input-group-text" for="env_id">Environment</label>
+                            <select class="form-select" id="env_id" name="env_id" onchange="this.form.submit()">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm me-2" style="width: 200px;">
+                            <label class="input-group-text" for="scan1_id">Scan 1</label>
+                            <select class="form-select" id="scan1_id" name="scan1_id" required>
+                                {% for scan in scans %}
+                                <option value="{{ scan.id }}" {% if scan1_id == scan.id %}selected{% endif %}>
+                                    {{ scan.name }} ({{ scan.start_time.strftime('%Y-%m-%d') }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm me-2" style="width: 200px;">
+                            <label class="input-group-text" for="scan2_id">Scan 2</label>
+                            <select class="form-select" id="scan2_id" name="scan2_id" required>
+                                {% for scan in scans %}
+                                <option value="{{ scan.id }}" {% if scan2_id == scan.id %}selected{% endif %}>
+                                    {{ scan.name }} ({{ scan.start_time.strftime('%Y-%m-%d') }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Compare</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if scan1 and scan2 %}
+<!-- Comparison Summary -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Comparison Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header font-weight-bold">{{ scan1.name }}</div>
+                            <div class="card-body">
+                                <p><strong>Date:</strong> {{ scan1.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                                <p><strong>Hosts Discovered:</strong> {{ scan1.discovered_hosts }}</p>
+                                <p><strong>Open Ports:</strong> {{ scan1.open_ports_found }}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge {% if scan1.status == 'completed' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ scan1.status|capitalize }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header font-weight-bold">{{ scan2.name }}</div>
+                            <div class="card-body">
+                                <p><strong>Date:</strong> {{ scan2.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                                <p><strong>Hosts Discovered:</strong> {{ scan2.discovered_hosts }}</p>
+                                <p><strong>Open Ports:</strong> {{ scan2.open_ports_found }}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge {% if scan2.status == 'completed' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ scan2.status|capitalize }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Charts -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Hosts Comparison</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                    <canvas id="hostsComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Ports Comparison</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                    <canvas id="portsComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Changes Details -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Changes Between Scans</h6>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="changesTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="hosts-tab" data-bs-toggle="tab" data-bs-target="#hosts" type="button" role="tab">
+                            Host Changes
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ports-tab" data-bs-toggle="tab" data-bs-target="#ports" type="button" role="tab">
+                            Port Changes
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="changesTabsContent">
+                    <div class="tab-pane fade show active" id="hosts" role="tabpanel">
+                        {% if host_changes %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Change Type</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for change in host_changes %}
+                                    <tr>
+                                        <td>{{ change.ip_address }}</td>
+                                        <td>
+                                            {% if change.change_type == 'new' %}
+                                            <span class="badge bg-success">New Host</span>
+                                            {% elif change.change_type == 'missing' %}
+                                            <span class="badge bg-danger">Missing Host</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">Status Change</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ change.details }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mt-3">
+                            No host changes detected between these scans.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="tab-pane fade" id="ports" role="tabpanel">
+                        {% if port_changes %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Host</th>
+                                        <th>Port</th>
+                                        <th>Change Type</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for change in port_changes %}
+                                    <tr>
+                                        <td>{{ change.ip_address }}</td>
+                                        <td>{{ change.port_number }}/{{ change.protocol }}</td>
+                                        <td>
+                                            {% if change.change_type == 'new' %}
+                                            <span class="badge bg-success">New Port</span>
+                                            {% elif change.change_type == 'closed' %}
+                                            <span class="badge bg-danger">Closed Port</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">Service Change</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ change.details }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mt-3">
+                            No port changes detected between these scans.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Analysis -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Security Analysis</h6>
+            </div>
+            <div class="card-body">
+                {% if security_changes %}
+                <div class="alert {% if security_score > 0 %}alert-success{% elif security_score < 0 %}alert-danger{% else %}alert-info{% endif %}">
+                    <h5 class="alert-heading">
+                        {% if security_score > 0 %}
+                        <i class="fas fa-check-circle me-2"></i>Security Posture Improved
+                        {% elif security_score < 0 %}
+                        <i class="fas fa-exclamation-triangle me-2"></i>Security Posture Declined
+                        {% else %}
+                        <i class="fas fa-info-circle me-2"></i>No Significant Security Changes
+                        {% endif %}
+                    </h5>
+                    <p>{{ security_analysis_summary }}</p>
+                </div>
+                
+                <div class="list-group mt-3">
+                    {% for change in security_changes %}
+                    <div class="list-group-item list-group-item-action {% if change.impact == 'positive' %}list-group-item-success{% elif change.impact == 'negative' %}list-group-item-danger{% else %}list-group-item-warning{% endif %}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ change.title }}</h5>
+                            <small>
+                                <span class="badge {% if change.severity == 'high' %}bg-danger{% elif change.severity == 'medium' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                                    {{ change.severity|capitalize }} Severity
+                                </span>
+                            </small>
+                        </div>
+                        <p class="mb-1">{{ change.description }}</p>
+                        <small>
+                            <strong>Recommendation:</strong> {{ change.recommendation }}
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i>No Security Changes Detected</h5>
+                    <p>No significant security changes were detected between these two scans.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Select Scans to Compare</h5>
+    <p>Please select two scans from the dropdown menus above to view a comparison.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if scan1 and scan2 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hosts Comparison Chart
+        const hostsCtx = document.getElementById('hostsComparisonChart').getContext('2d');
+        const hostsComparisonChart = new Chart(hostsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Total Hosts', 'Active Hosts', 'New Hosts'],
+                datasets: [
+                    {
+                        label: '{{ scan1.name }}',
+                        data: [{{ scan1.discovered_hosts }}, {{ scan1.active_hosts }}, {{ scan1.new_hosts }}],
+                        backgroundColor: 'rgba(78, 115, 223, 0.7)',
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '{{ scan2.name }}',
+                        data: [{{ scan2.discovered_hosts }}, {{ scan2.active_hosts }}, {{ scan2.new_hosts }}],
+                        backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                        borderColor: 'rgba(28, 200, 138, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Hosts Comparison'
+                    }
+                }
+            }
+        });
+        
+        // Ports Comparison Chart
+        const portsCtx = document.getElementById('portsComparisonChart').getContext('2d');
+        const portsComparisonChart = new Chart(portsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Open Ports', 'New Ports', 'Closed Ports'],
+                datasets: [
+                    {
+                        label: '{{ scan1.name }}',
+                        data: [{{ scan1.open_ports_found }}, {{ scan1.new_ports_found }}, {{ scan1.closed_ports }}],
+                        backgroundColor: 'rgba(78, 115, 223, 0.7)',
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '{{ scan2.name }}',
+                        data: [{{ scan2.open_ports_found }}, {{ scan2.new_ports_found }}, {{ scan2.closed_ports }}],
+                        backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                        borderColor: 'rgba(28, 200, 138, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Ports Comparison'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

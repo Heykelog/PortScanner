@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Details - Port Scanner{% endblock %}
+
+{% block header %}Scan: {{ scan.name }}{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <a href="{{ url_for('scan.index') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back
+    </a>
+    {% if current_user.is_admin %}
+    <form action="{{ url_for('scan.rescan', scan_id=scan.id) }}" method="post" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-sync-alt me-2"></i>Run New Scan
+        </button>
+    </form>
+    {% if scan.status == 'completed' %}
+    <form action="{{ url_for('scan.run_vuln_scan', scan_id=scan.id) }}" method="post" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-warning">
+            <i class="fas fa-search me-2"></i>Run Vulnerability Scan
+        </button>
+    </form>
+    {% endif %}
+    <button type="button" class="btn btn-danger" 
+            data-delete-url="{{ url_for('scan.delete_scan', scan_id=scan.id) }}" 
+            data-item-name="{{ scan.name }}">
+        <i class="fas fa-trash me-2"></i>Delete
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Scan Details -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Scan Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Scan Type:</strong> {{ scan.scan_type|capitalize }}</p>
+                        <p><strong>Status:</strong>
+                            {% if scan.status == 'pending' %}
+                            <span class="badge bg-secondary">Pending</span>
+                            {% elif scan.status == 'running' %}
+                            <span class="badge bg-primary">Running</span>
+                            {% elif scan.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif scan.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Started:</strong> {{ scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else 'Not started' }}</p>
+                        <p><strong>Completed:</strong> {{ scan.end_time.strftime('%Y-%m-%d %H:%M') if scan.end_time else 'Not completed' }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <p><strong>Environment:</strong> 
+                            <a href="{{ url_for('main.view_environment', env_id=scan.environment_id) }}">
+                                {{ scan.environment.name if scan.environment else 'Unknown' }}
+                            </a>
+                        </p>
+                        {% if scan.target_list %}
+                        <p><strong>Target List:</strong> 
+                            <a href="{{ url_for('scan.view_target_list', list_id=scan.target_list_id) }}">
+                                {{ scan.target_list.name }}
+                            </a>
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Scan Results</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <h2 class="text-info">{{ new_hosts|length }}</h2>
+                        <p>New Hosts</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <h2 class="text-warning">{{ new_ports|length }}</h2>
+                        <p>New Ports</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <h2 class="text-danger">{{ vulnerabilities|length }}</h2>
+                        <p>Vulnerabilities</p>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <p>
+                        <strong>Total Scan Time:</strong>
+                        {% if scan.start_time and scan.end_time %}
+                        {{ (scan.end_time - scan.start_time)|string|replace('days', 'days,')|replace('day', 'day,') }}
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Hosts -->
+{% if new_hosts %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">New Hosts Discovered</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Subnet</th>
+                        <th>Discovered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in new_hosts %}
+                    <tr>
+                        <td>{{ result.host.ip_address if result.host else 'N/A' }}</td>
+                        <td>{{ result.host.subnet.cidr if result.host and result.host.subnet else 'N/A' }}</td>
+                        <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if result.host %}
+                            <a href="{{ url_for('main.view_host', host_id=result.host.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- New Ports -->
+{% if new_ports %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">New Ports Discovered</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Port</th>
+                        <th>Service</th>
+                        <th>Discovered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in new_ports %}
+                    <tr>
+                        <td>{{ result.host.ip_address if result.host else 'N/A' }}</td>
+                        <td>{{ result.port.port_number if result.port else 'N/A' }}</td>
+                        <td>{{ result.port.service if result.port else 'N/A' }}</td>
+                        <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if result.host %}
+                            <a href="{{ url_for('main.view_host', host_id=result.host.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Port Changes -->
+{% if port_changes %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Port Status Changes</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Port</th>
+                        <th>Status Change</th>
+                        <th>Timestamp</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in port_changes %}
+                    <tr>
+                        <td>{{ result.host.ip_address if result.host else 'N/A' }}</td>
+                        <td>{{ result.port.port_number if result.port else 'N/A' }}/{{ result.port.protocol if result.port else 'N/A' }}</td>
+                        <td>{{ result.details }}</td>
+                        <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if result.host %}
+                            <a href="{{ url_for('main.view_host', host_id=result.host.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Vulnerabilities -->
+{% if vulnerabilities %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Detected Vulnerabilities</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Port</th>
+                        <th>Vulnerability</th>
+                        <th>Discovered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in vulnerabilities %}
+                    <tr>
+                        <td>{{ result.host.ip_address if result.host else 'N/A' }}</td>
+                        <td>{{ result.port.port_number if result.port else 'N/A' }}/{{ result.port.protocol if result.port else 'N/A' }}</td>
+                        <td>{{ result.details }}</td>
+                        <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if result.host %}
+                            <a href="{{ url_for('main.view_host', host_id=result.host.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %} 

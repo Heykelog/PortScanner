@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Subnet - Port Scanner{% endblock %}
+
+{% block header %}Edit Subnet{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('main.view_environment', env_id=subnet.environment_id) }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Environment
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Edit Subnet {{ subnet.cidr }}</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="environment_id" class="form-label">Environment</label>
+                        <select class="form-select" id="environment_id" name="environment_id" required>
+                            {% for environment in environments %}
+                            <option value="{{ environment.id }}" {% if subnet.environment_id == environment.id %}selected{% endif %}>
+                                {{ environment.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select which environment this subnet belongs to.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cidr" class="form-label">CIDR Range</label>
+                        <input type="text" class="form-control" id="cidr" name="cidr" required
+                               value="{{ subnet.cidr }}" placeholder="e.g. 192.168.1.0/24">
+                        <div class="form-text">Enter subnet in CIDR notation with network address (ending in .0).</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Enter description">{{ subnet.description }}</textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('main.view_environment', env_id=subnet.environment_id) }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update Subnet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

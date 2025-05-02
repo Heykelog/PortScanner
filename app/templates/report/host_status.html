@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Host Status - Port Scanner{% endblock %}
+
+{% block header %}Host Status Report{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('report.index') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Reports
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Network Utilization: {{ environment_name }}</h6>
+                <div class="dropdown no-arrow">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <label class="input-group-text" for="env_id">Environment</label>
+                            <select class="form-select" id="env_id" name="env_id" onchange="this.form.submit()">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env.id }}" {% if current_env_id == env.id %}selected{% endif %}>{{ env.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Subnet Status</h6>
+            </div>
+            <div class="card-body">
+                {% if subnet_data %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Subnet</th>
+                                <th>Description</th>
+                                <th>Total Hosts</th>
+                                <th>Active Hosts</th>
+                                <th>Host Capacity</th>
+                                <th>Utilization</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subnet in subnet_data %}
+                            <tr>
+                                <td>{{ subnet.cidr }}</td>
+                                <td>{{ subnet.description }}</td>
+                                <td>{{ subnet.total_hosts }}</td>
+                                <td>{{ subnet.active_hosts }}</td>
+                                <td>{{ subnet.host_capacity }}</td>
+                                <td>
+                                    {% if subnet.utilization != "N/A" %}
+                                    <div class="progress">
+                                        <div class="progress-bar
+                                            {% if subnet.utilization > 80 %}bg-danger
+                                            {% elif subnet.utilization > 50 %}bg-warning
+                                            {% else %}bg-success{% endif %}"
+                                            role="progressbar" style="width: {{ subnet.utilization }}%"
+                                            aria-valuenow="{{ subnet.utilization }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ subnet.utilization }}%
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.hosts') }}?subnet_id={{ subnet.id }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye me-1"></i>View Hosts
+                                    </a>
+                                    <a href="{{ url_for('report.export_report') }}?type=subnet&subnet_id={{ subnet.id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download me-1"></i>Export
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">No subnet data available for the selected environment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if subnet_data %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Host Status Distribution</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                    <canvas id="hostStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Subnet Utilization</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                    <canvas id="utilizationChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if subnet_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Host Status Chart
+        const totalHosts = {{ subnet_data|map(attribute='total_hosts')|sum }};
+        const activeHosts = {{ subnet_data|map(attribute='active_hosts')|sum }};
+        const inactiveHosts = totalHosts - activeHosts;
+        
+        const hostCtx = document.getElementById('hostStatusChart').getContext('2d');
+        const hostStatusChart = new Chart(hostCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Active', 'Inactive'],
+                datasets: [{
+                    data: [activeHosts, inactiveHosts],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(201, 203, 207, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(201, 203, 207, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Host Status Distribution'
+                    }
+                }
+            }
+        });
+        
+        // Subnet Utilization Chart
+        const utilizationCtx = document.getElementById('utilizationChart').getContext('2d');
+        const utilizationChart = new Chart(utilizationCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ subnet_data|map(attribute='cidr')|list|tojson }},
+                datasets: [{
+                    label: 'Utilization (%)',
+                    data: {{ subnet_data|map(attribute='utilization')|list|tojson }},
+                    backgroundColor: [
+                        {% for subnet in subnet_data %}
+                        {% if subnet.utilization != "N/A" %}
+                            {% if subnet.utilization > 80 %}'rgba(255, 99, 132, 0.7)'
+                            {% elif subnet.utilization > 50 %}'rgba(255, 205, 86, 0.7)'
+                            {% else %}'rgba(75, 192, 192, 0.7)'{% endif %}
+                        {% else %}'rgba(201, 203, 207, 0.7)'{% endif %}
+                        {{ "," if not loop.last }}
+                        {% endfor %}
+                    ],
+                    borderColor: [
+                        {% for subnet in subnet_data %}
+                        {% if subnet.utilization != "N/A" %}
+                            {% if subnet.utilization > 80 %}'rgba(255, 99, 132, 1)'
+                            {% elif subnet.utilization > 50 %}'rgba(255, 205, 86, 1)'
+                            {% else %}'rgba(75, 192, 192, 1)'{% endif %}
+                        {% else %}'rgba(201, 203, 207, 1)'{% endif %}
+                        {{ "," if not loop.last }}
+                        {% endfor %}
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Utilization (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Subnet'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Subnet Utilization'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

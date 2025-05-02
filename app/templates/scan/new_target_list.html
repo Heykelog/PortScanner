@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}New Target List - Port Scanner{% endblock %}
+
+{% block header %}Create New Target List{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('scan.target_lists') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Target Lists
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Target List Information</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">List Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required
+                               placeholder="Enter a name for this target list">
+                        <div class="form-text">Choose a descriptive name to identify this list.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Enter a description (optional)"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="targets" class="form-label">Targets</label>
+                        <textarea class="form-control" id="targets" name="targets" rows="10" required
+                                  placeholder="Enter targets, one per line:&#10;192.168.1.1&#10;10.0.0.0/24&#10;example.com"></textarea>
+                        <div class="form-text">
+                            Enter one target per line. You can specify:
+                            <ul>
+                                <li>Individual IP addresses (e.g., 192.168.1.1)</li>
+                                <li>CIDR subnet ranges (e.g., 192.168.1.0/24)</li>
+                                <li>Hostnames (e.g., example.com)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('scan.target_lists') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Target List
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

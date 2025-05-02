@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Schedules - Port Scanner{% endblock %}
+
+{% block header %}Scan Schedules{% endblock %}
+
+{% block header_buttons %}
+{% if current_user.is_admin %}
+<a href="{{ url_for('scan.new_schedule') }}" class="btn btn-primary">
+    <i class="fas fa-plus me-2"></i>New Schedule
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Scheduled Scans</h6>
+    </div>
+    <div class="card-body">
+        {% if schedules %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Frequency</th>
+                        <th>Next Run</th>
+                        <th>Environment</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                    <tr>
+                        <td>{{ schedule.name }}</td>
+                        <td>
+                            {% if schedule.frequency == 'daily' %}
+                            Daily at {{ schedule.time_of_day.strftime('%H:%M') }}
+                            {% elif schedule.frequency == 'weekly' %}
+                            Weekly on
+                            {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            {{ days[schedule.day_of_week] }} at {{ schedule.time_of_day.strftime('%H:%M') }}
+                            {% elif schedule.frequency == 'monthly' %}
+                            Monthly on day {{ schedule.day_of_month }} at {{ schedule.time_of_day.strftime('%H:%M') }}
+                            {% else %}
+                            {{ schedule.frequency }} at {{ schedule.time_of_day.strftime('%H:%M') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- This would require calculation in real life -->
+                            <span class="text-muted">Varies based on last run</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.view_environment', env_id=schedule.environment_id) }}">
+                                {{ schedule.environment.name }}
+                            </a>
+                            {% if schedule.subnet %}
+                            <br>
+                            <small>Subnet: {{ schedule.subnet.cidr }}</small>
+                            {% else %}
+                            <br>
+                            <small>All subnets</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if schedule.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if current_user.is_admin %}
+                            <a href="{{ url_for('scan.edit_schedule', schedule_id=schedule.id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger btn-sm" 
+                                    data-delete-url="{{ url_for('scan.delete_schedule', schedule_id=schedule.id) }}"
+                                    data-item-name="{{ schedule.name }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No scan schedules have been created yet.</p>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('scan.new_schedule') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Schedule
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">About Scheduled Scans</h6>
+    </div>
+    <div class="card-body">
+        <p>Scheduled scans allow you to automate the scanning process at regular intervals.</p>
+        <p>Available scheduling options:</p>
+        <ul>
+            <li><strong>Daily:</strong> Runs every day at the specified time</li>
+            <li><strong>Weekly:</strong> Runs on a specific day of the week</li>
+            <li><strong>Monthly:</strong> Runs on a specific day of the month</li>
+        </ul>
+        <p>Schedules can target an entire environment or a specific subnet within an environment.</p>
+    </div>
+</div>
+{% endblock %} 

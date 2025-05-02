@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Add Subnet - Port Scanner{% endblock %}
+
+{% block header %}Add New Subnet{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('main.environments') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back to Environments
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Subnet Details</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="environment_id" class="form-label">Environment</label>
+                        <select class="form-select" id="environment_id" name="environment_id" required>
+                            {% for environment in environments %}
+                            <option value="{{ environment.id }}" {% if env_id and env_id|int == environment.id %}selected{% endif %}>
+                                {{ environment.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select which environment this subnet belongs to.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Input Method</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="input_method" id="input_method_manual" value="manual" checked>
+                            <label class="form-check-label" for="input_method_manual">
+                                Manual CIDR Entry
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="input_method" id="input_method_target_list" value="target_list">
+                            <label class="form-check-label" for="input_method_target_list">
+                                Choose from Target List
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="manual_input_section" class="mb-3">
+                        <label for="cidr" class="form-label">CIDR Range</label>
+                        <input type="text" class="form-control" id="cidr" name="cidr"
+                               placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8, 172.16.0.0/12">
+                        <div class="form-text">Enter subnet(s) in CIDR notation with network address (ending in .0). For multiple subnets, separate with commas: 192.168.1.0/24, 10.0.0.0/8</div>
+                    </div>
+                    
+                    <div id="target_list_section" class="mb-3" style="display: none;">
+                        <label for="target_list_id" class="form-label">Target List</label>
+                        <select class="form-select" id="target_list_id" name="target_list_id">
+                            <option value="">Select a target list</option>
+                            {% for list in target_lists %}
+                            <option value="{{ list.id }}">{{ list.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select a predefined target list containing subnet definitions.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Enter description"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('main.environments') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Subnet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const manualRadio = document.getElementById('input_method_manual');
+    const targetListRadio = document.getElementById('input_method_target_list');
+    const manualSection = document.getElementById('manual_input_section');
+    const targetListSection = document.getElementById('target_list_section');
+    
+    function updateVisibility() {
+        if (manualRadio.checked) {
+            manualSection.style.display = 'block';
+            targetListSection.style.display = 'none';
+            document.getElementById('cidr').setAttribute('required', '');
+            document.getElementById('target_list_id').removeAttribute('required');
+        } else {
+            manualSection.style.display = 'none';
+            targetListSection.style.display = 'block';
+            document.getElementById('cidr').removeAttribute('required');
+            document.getElementById('target_list_id').setAttribute('required', '');
+        }
+    }
+    
+    manualRadio.addEventListener('change', updateVisibility);
+    targetListRadio.addEventListener('change', updateVisibility);
+    
+    // Initial setup
+    updateVisibility();
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Environments - Port Scanner{% endblock %}
+
+{% block header %}Environments{% endblock %}
+
+{% block header_buttons %}
+{% if current_user.is_admin %}
+<a href="{{ url_for('main.new_environment') }}" class="btn btn-primary">
+    <i class="fas fa-plus me-2"></i>New Environment
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Available Environments</h6>
+    </div>
+    <div class="card-body">
+        {% if environments %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Subnets</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for env in environments %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('main.view_environment', env_id=env.id) }}">
+                                {{ env.name }}
+                            </a>
+                        </td>
+                        <td>{{ env.description }}</td>
+                        <td>
+                            {% set subnet_count = env.subnets.count() %}
+                            {% if subnet_count > 0 %}
+                            <span class="badge bg-info">{{ subnet_count }} subnet(s)</span>
+                            {% else %}
+                            <span class="badge bg-secondary">No subnets</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ env.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="{{ url_for('main.view_environment', env_id=env.id) }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if current_user.is_admin %}
+                            <a href="{{ url_for('main.edit_environment', env_id=env.id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger btn-sm" 
+                                    data-delete-url="{{ url_for('main.delete_environment', env_id=env.id) }}"
+                                    data-item-name="{{ env.name }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No environments have been created yet.</p>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('main.new_environment') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Environment
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

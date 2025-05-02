@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Environment - Port Scanner{% endblock %}
+
+{% block header %}Edit Environment{% endblock %}
+
+{% block header_buttons %}
+<a href="{{ url_for('main.view_environment', env_id=environment.id) }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-2"></i>Back
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Environment Information</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Environment Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required
+                               value="{{ environment.name }}" placeholder="Enter environment name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Enter description">{{ environment.description }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active"
+                               {% if environment.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Active</label>
+                        <div class="form-text">Inactive environments won't be included in scheduled scans.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('main.view_environment', env_id=environment.id) }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
